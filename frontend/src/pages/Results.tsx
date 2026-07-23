@@ -1,35 +1,62 @@
 import { useState } from 'react'
-import { useScenarios, useCompute } from '../api'
-import { Card, CardContent, Typography, Select, MenuItem, Box, Table, TableBody, TableCell, TableHead, TableRow, LinearProgress } from '@mui/material'
+import { useScenarios, useCompute, useBodies, useBlockTree } from '../api'
+import {
+  Card, CardContent, Typography, Select, MenuItem, Box, Table,
+  TableBody, TableCell, TableHead, TableRow, LinearProgress, FormControl, InputLabel
+} from '@mui/material'
 
 const colorForSensitivity = (s: number, max: number) => {
   const ratio = s / max
-  if (ratio < 0.2) return '#4caf50'  // green
-  if (ratio < 0.5) return '#ff9800'  // yellow
-  return '#f44336'                    // red
+  if (ratio < 0.2) return '#4caf50'
+  if (ratio < 0.5) return '#ff9800'
+  return '#f44336'
 }
 
 export default function Results() {
   const { data: scenarios } = useScenarios()
   const [selected, setSelected] = useState<number | null>(null)
   const { data: result, isLoading } = useCompute(selected)
+  const { data: bodies } = useBodies()
+  const [selectedBody, setSelectedBody] = useState<number | null>(null)
+  const { data: tree } = useBlockTree(selectedBody)
 
+  // Flatten tree for block name lookup
+  const flatBlocks = (nodes: any[]): any[] => {
+    if (!nodes) return []
+    return nodes.reduce((acc: any[], n) => [...acc, n, ...flatBlocks(n.children)], [])
+  }
+  const allBlocks = flatBlocks(tree || [])
   const maxSensitivity = result ? Math.max(...result.missions.map(m => m.sensitivity), 1) : 1
 
   return (
     <Box>
-      <Box sx={{ mb: 2 }}>
-        <Select
-          value={selected || ''}
-          onChange={(e) => setSelected(e.target.value as number)}
-          displayEmpty
-          sx={{ minWidth: 200 }}
-        >
-          <MenuItem value="" disabled>Select Scenario</MenuItem>
-          {scenarios?.map((s) => (
-            <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
-          ))}
-        </Select>
+      <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center' }}>
+        <FormControl size="small" sx={{ minWidth: 200 }}>
+          <InputLabel>Scenario</InputLabel>
+          <Select
+            value={selected || ''}
+            label="Scenario"
+            onChange={(e) => setSelected(e.target.value as number)}
+          >
+            <MenuItem value="" disabled>Select Scenario</MenuItem>
+            {scenarios?.map((s) => (
+              <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <FormControl size="small" sx={{ minWidth: 200 }}>
+          <InputLabel>Body (for block details)</InputLabel>
+          <Select
+            value={selectedBody || ''}
+            label="Body (for block details)"
+            onChange={(e) => setSelectedBody(Number(e.target.value))}
+          >
+            <MenuItem value="">All Bodies</MenuItem>
+            {bodies?.map((b) => (
+              <MenuItem key={b.id} value={b.id}>{b.name}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
       </Box>
 
       {isLoading && <LinearProgress />}

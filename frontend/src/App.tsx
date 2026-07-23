@@ -1,15 +1,15 @@
-import React, { useState } from 'react'
-import { AppBar, Toolbar, Typography, Button, Container, Box } from '@mui/material'
-import OrgBuilder from './pages/OrgBuilder'
+import { useState } from 'react'
+import { AppBar, Toolbar, Typography, Button, Container } from '@mui/material'
+import TreeBuilder from './pages/OrgBuilder'
 import DependencyMap from './pages/DependencyMap'
 import MissionMapper from './pages/MissionMapper'
 import ScenarioEditor from './pages/ScenarioEditor'
 import Results from './pages/Results'
 
-type Page = 'org' | 'deps' | 'missions' | 'scenarios' | 'results'
+type Page = 'tree' | 'deps' | 'missions' | 'scenarios' | 'results'
 
 const pageNames: Record<Page, string> = {
-  org: 'Organization',
+  tree: 'Tree Builder',
   deps: 'Dependencies',
   missions: 'Missions',
   scenarios: 'Scenarios',
@@ -17,13 +17,13 @@ const pageNames: Record<Page, string> = {
 }
 
 export default function App() {
-  const [page, setPage] = useState<Page>('org')
+  const [page, setPage] = useState<Page>('tree')
 
   return (
     <>
       <AppBar position="static">
         <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 0, mr: 3 }}>
+          <Typography variant="h6" sx={{ mr: 3 }}>
             BCPTool
           </Typography>
           {(Object.keys(pageNames) as Page[]).map((p) => (
@@ -39,7 +39,7 @@ export default function App() {
         </Toolbar>
       </AppBar>
       <Container maxWidth="xl" sx={{ mt: 2 }}>
-        {page === 'org' && <OrgBuilder />}
+        {page === 'tree' && <TreeBuilder />}
         {page === 'deps' && <DependencyMap />}
         {page === 'missions' && <MissionMapper />}
         {page === 'scenarios' && <ScenarioEditor />}

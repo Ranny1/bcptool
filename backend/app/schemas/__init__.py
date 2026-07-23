@@ -66,6 +66,38 @@ class BlockOut(BlockBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+# ── Block Tree (hierarchical) ───────────────────────────────
+class BlockTreeNode(BaseModel):
+    """A block with its children nested — for tree view."""
+    id: int
+    name: str
+    description: Optional[str] = None
+    parent_block_id: Optional[int] = None
+    body_id: Optional[int] = None
+    is_external: bool = False
+    block_type: Optional[str] = None
+    children: List["BlockTreeNode"] = []
+    model_config = ConfigDict(from_attributes=True)
+
+class ReparentRequest(BaseModel):
+    new_parent_id: Optional[int] = None  # None = move to body root
+
+class ApplyDamageToDescendantsRequest(BaseModel):
+    damage_pct: float = Field(ge=0.0, le=100.0)
+
+class BlockWithChildrenOut(BaseModel):
+    """Block with immediate children list (not recursive)."""
+    id: int
+    name: str
+    description: Optional[str] = None
+    parent_block_id: Optional[int] = None
+    body_id: Optional[int] = None
+    is_external: bool = False
+    block_type: Optional[str] = None
+    children: List[BlockOut] = []
+    model_config = ConfigDict(from_attributes=True)
+
+
 # ── Dependency ───────────────────────────────────────────────
 class DependencyBase(BaseModel):
     dependent_block_id: int
