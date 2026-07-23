@@ -1,4 +1,4 @@
-# BCP Tool — Software Specification (v0.2)
+# BCP Tool — Software Specification (v0.3)
 
 ## 1. Purpose
 
@@ -24,11 +24,19 @@ Designed for large, diverse organizations composed of semi-autonomous bodies wit
 - Can depend on other bodies, blocks within other bodies, and **External Blocks**.
 
 #### Block
-- The lowest-level unit of analysis. Defined by the expert during mapping.
+- A unit of analysis. Defined by the expert during mapping.
 - Can represent anything the expert decides is the right granularity: a critical asset (server, facility, vehicle fleet), a business unit, a process, a team, a supplier relationship.
 - Belongs to exactly one Body (or is External).
+- **Hierarchical:** Blocks form a tree within their Body. A block may have a `parent_block_id` pointing to another block in the same body. This lets the expert build a multi-level decomposition:
+  - Top-level blocks under a body (e.g., "IT Infrastructure", "Facilities", "Staff & Processes").
+  - Sub-blocks under each (e.g., "Datacenter", "Network", "Servers" under "IT Infrastructure").
+  - Leaf blocks at the bottom (e.g., "Rack 12", "UPS", "Cooling System" under "Datacenter").
+  - Depth is unlimited in the data model; the GUI should handle reasonable depth (4–6 levels typical).
+  - **Rationale:** Different scenarios affect different levels. A fire damages a specific rack; a power outage affects the whole datacenter; a cyberattack affects all IT. Hierarchy lets the expert assign damage at the right level and have it make sense structurally.
+- **Hierarchy vs. dependencies:** The parent-child tree is *structural decomposition* (is-a-part-of), not a dependency. Dependencies (A needs B) are a separate, explicit graph that can connect any two blocks regardless of tree position.
 - **Contributes to** one or more Missions **within its own Body** at a defined **contribution strength** (1–5).
-  - > **Future consideration:** Allow blocks to contribute directly to missions in other bodies. Currently, cross-body influence on missions happens *only* through dependencies. A block in Body 2 that depends on a block in Body 1 will have its effective capacity reduced when Body 1's block is damaged, which in turn reduces Body 2's mission capacity. This covers the cross-body case through the dependency graph rather than direct contribution links.
+  - Both leaf blocks and intermediate (non-leaf) blocks can contribute to missions. The expert decides which level of granularity is meaningful for each mission.
+  - > **Future consideration:** Allow blocks to contribute directly to missions in other bodies. Currently, cross-body influence on missions happens *only* through dependencies.
 - Has **dependencies** on other Blocks at a defined **dependency strength** (1–5).
 - Blocks are established through expert interviews/survey and refined continuously.
 
@@ -89,7 +97,8 @@ Organization
 ├── has → Missions (org-level, importance 1–5)
 ├── contains → Bodies
 │   ├── has → Missions (body-level, importance 1–5)
-│   ├── has → Blocks (hierarchical tree)
+│   ├── has → Blocks (hierarchical tree, unlimited depth)
+│   │   ├── has → child Blocks (parent_block_id, same body)
 │   │   ├── contributes to → Missions in SAME body (strength 1–5)
 │   │   ├── depends on → other Blocks (strength 1–5, bidirectional)
 │   │   └── has → Mitigations
@@ -97,8 +106,12 @@ Organization
 └── references → External Blocks
     └── (same properties as internal blocks, but org has no internal control)
 
+Note: The parent-child tree (parent_block_id) is structural decomposition
+("is-a-part-of"). Dependencies are a separate explicit graph ("needs-to-function").
+Both can connect any two blocks regardless of tree position.
+
 Scenario
-├── applies → direct damage (0–100%) to each Block
+├── applies → direct damage (0–100%) to each Block (any level of the tree)
 ├── can be combined → CombinedScenario (residual multiplication)
 └── can be combined with other Scenarios
 
@@ -434,38 +447,85 @@ CREATE INDEX idx_mission_org ON mission(organization_id);
 - **Audit trail:** `created_at` / `updated_at` on all tables. For a future version, a full audit log table.
 - **Scale:** SQLite handles thousands of rows and concurrent reads fine. The graph (few thousand blocks/edges) is trivial for SQLite. The main constraint is single-writer, which is fine for v1 (one expert at a time).
 
-## 7. GUI Requirements (High-Level)
+## 7. GUI Requirements
+
+**Design principle:** The GUI is the primary interface for the tool. All creation, editing, and management of bodies, blocks, dependencies, missions, scenarios, and mitigations happens through the GUI — not through direct API calls or database edits. The GUI must be usable by a domain expert with no technical background.
 
 ### 7.1 Expert View
 
-**7.1.1 Organization Builder**
-- Tree view of the organization: Bodies → Blocks (hierarchical).
-- Add/edit/delete bodies and blocks.
-- Drag-and-drop or form-based block creation.
-- External blocks shown in a separate panel.
+**7.1.1 Organization & Block Tree Builder**
 
-**7.1.2 Dependency Map**
-- Visual graph (nodes = blocks, edges = dependencies).
-- Edge thickness/label = dependency strength (1–5).
-- Bidirectional edges shown as double-headed.
-- Click on edge to edit strength.
-- Highlight: click a block to see all its dependencies (upstream and downstream).
-- Filter: show only blocks within a body, or show cross-body dependencies.
-- Built with **react-flow** (https://reactflow.dev).
+This is the primary building interface — a hierarchical tree editor where the expert constructs the organizational structure.
+
+**Layout:**
+- Left panel: Organization tree (collapsible/expandable).
+  - Level 0: Organization (root)
+  - Level 1: Bodies (divisions, departments)
+  - Level 2+: Blocks in a tree under each body (unlimited depth, typically 3–5 levels)
+  - External blocks shown in a separate, clearly labeled section at the bottom
+- Right panel: Details/properties of the selected node (form fields: name, description, type, etc.)
+- Top toolbar: Add Body, Add Block, Add External Block, Delete, Move (reparent)
+
+**Tree operations:**
+- **Add Body:** Creates a new top-level body under the organization. Fields: name, description.
+- **Add Block (child):** Right-click a body or block → "Add child block". The new block's `parent_block_id` is set to the clicked node (or to the body if clicked on a body). Fields: name, description, block_type (free-form text or dropdown of common types: facility, server, process, team, supplier, etc.), is_external (auto-set based on where it's created).
+- **Add External Block:** Created in the external section. Same fields but `is_external=true`, no parent body.
+- **Reparent:** Drag-and-drop a block to a new parent (body or another block). The GUI enforces: cannot reparent to its own descendant (no cycles in the tree). Cannot move a block between bodies (a block belongs to exactly one body). External blocks stay external.
+- **Delete:** Delete a block → also deletes its descendants (cascade). Confirmation dialog showing what will be deleted. Delete a body → deletes all blocks within it.
+- **Expand/Collapse:** All nodes expandable/collapsible. "Expand all" / "Collapse all" buttons. Remember expansion state per session.
+- **Search/filter:** Text search across block names. Highlights matching nodes and auto-expands their ancestors.
+- **Block count badges:** Each body shows total block count. Each parent block shows child count.
+
+**Visual cues:**
+- Different icons for: body, internal block, external block, leaf block vs. parent block.
+- Color or badge for block type (facility, server, process, etc.) — optional, user-configurable.
+- External blocks visually distinct (different background color, dashed border).
+- Nodes with unsaved changes show an indicator.
+
+**7.1.2 Dependency Graph Editor**
+
+This is a separate view/tab from the tree builder. It shows blocks as nodes and dependencies as edges, using **react-flow**.
+
+**Layout:**
+- Full-screen canvas with react-flow.
+- Left panel (collapsible): filter controls (by body, by depth, show/hide external, show/hide cross-body).
+- Top toolbar: Add Dependency, Delete Dependency, Run Layout (auto-arrange), Back to Tree.
+
+**Node behavior:**
+- Each block is a node. Node label = block name. Node color/type indicator matches block_type.
+- Nodes are draggable. Position is saved per body (or per session — TBD).
+- Grouping: blocks within the same body can be visually grouped (colored background region with body name label). This is important for cross-body dependency visualization.
+- Double-click a node → opens the node detail panel (same as tree builder right panel).
+- Tree hierarchy is NOT shown here (that's the tree builder's job). Dependencies are a separate graph. However, the node can show a small badge indicating it has children in the tree (e.g., "3 children" tooltip).
+
+**Edge behavior:**
+- To create a dependency: click "Add Dependency" then click source block (A, the dependent) then target block (B, the dependency). Or drag from a node's output handle to another node's input handle.
+- Edge label = strength (1–5). Edge thickness scales with strength. Edge color: gradient from light (strength 1) to dark/red (strength 5).
+- Bidirectional dependencies shown as two separate curved edges (A→B and B→A) to keep strengths distinct.
+- Click an edge → edit strength in a popup or side panel. Delete edge from the popup.
+- Hover over an edge → highlight the path from A to B in the tree (future enhancement).
 
 **7.1.3 Mission Mapper**
-- List of all missions (org-level + per body).
-- For each mission: assign importance weight (1–5).
-- For each mission: show which blocks contribute, with contribution strength (1–5).
-- Add/remove contributing blocks per mission.
-- Note: blocks can only contribute to missions within their own body.
+
+**Layout:**
+- Left panel: list of missions (grouped by body, with org-level missions at top). Each mission card shows: name, importance (1–5 stars), and number of contributing blocks.
+- Right panel: mission detail — shows contributing blocks with their contribution strength.
+- "Add Mission" button — creates a mission under a selected body or at the org level.
+- For each mission: assign importance weight (1–5, star rating or slider).
+- For each mission: add/remove contributing blocks. Only blocks within the same body are selectable (enforced by the GUI).
+- Contribution strength slider (1–5) per block-mission pair.
+- Visual: blocks shown as chips/tags with their strength. Remove with X.
+- A block can contribute to multiple missions — show this as a badge on the block in the tree builder ("Contributes to 3 missions") — optional future enhancement.
 
 **7.1.4 Scenario Editor**
+
 - Create/edit scenarios.
-- For each scenario: table of blocks × damage severity (0–100%).
+- For each scenario: a table or grid of blocks × damage severity (0–100%).
+- **Hierarchical damage assignment:** The expert can assign damage at any level of the block tree. If damage is assigned to a parent block, there should be a clear indication of whether this also applies to children or is only for the parent. (See Open Questions below.)
 - Quick-fill: "set all to 0" then fill in affected blocks.
 - Copy scenario → modify (e.g., "earthquake moderate" → "earthquake severe").
 - Create combined scenarios: select 2+ existing scenarios → combined damage auto-calculated via residual multiplication.
+- Damage input: slider (0–100%) per block. Only show blocks that are affected (others stay at 0% / hidden). Filter/search to find blocks quickly.
 
 **7.1.5 Mitigation Editor**
 - Create mitigations, assign to blocks or dependencies.
@@ -608,12 +668,39 @@ The `/api/compute` endpoint:
 | **Mission Sensitivity** | Mission importance × (100% − mission capacity) — the key output metric |
 | **Propagation** | Cascading impact through the dependency graph from directly-damaged blocks to downstream blocks and missions |
 
-## 11. Open Items for Future Discussion
+## 11. Open Questions (v0.3)
 
-1. **Problem ranking method:** How to rank/prioritize which problems (vulnerable blocks/dependencies) to address first — beyond the raw sensitivity score. To be discussed.
-2. **Time dimension:** v1 is a single-frame snapshot. Future: add time evolution (recovery curves, T+1h, T+1day, T+1week).
-3. **Cross-body contributions:** Currently blocks can only contribute to missions in their own body. Future: allow direct cross-body contribution links.
-4. **Multi-tenant:** Schema supports it structurally, but v1 is single-organization.
-5. **Advanced propagation models:** v1 uses linear cascade. Future: nonlinear thresholds, time-delayed propagation, Monte Carlo simulation.
-6. **Export/import:** CSV, Excel, JSON export of the model and results for offline analysis.
-7. **Versioning:** Model version history (snapshots of the org structure over time).
+1. **Hierarchical damage propagation:** When a parent block is damaged, does this automatically damage its children? Options:
+   - **(a) No** — damage is only ever assigned to the specific block the expert selects. The tree is purely structural. If the expert wants to damage a whole subsystem, they assign damage to each leaf, or they use a "apply to all descendants" helper in the GUI.
+   - **(b) Yes, implicitly** — if a parent is at 80% damage, children inherit that 80% as a floor (they can be individually set higher but not lower). The parent's capacity is the weighted average of children.
+   - **(c) Expert's choice per scenario** — a toggle: "damage applies to this block only" vs. "damage cascades to children."
+   - My recommendation: **(a)** with a GUI helper — keeps the computation model clean, and the GUI can offer a "apply to all descendants" button for convenience. But this is your call.
+
+2. **Block capacity aggregation up the tree:** If a parent block has children, is the parent's effective capacity:
+   - **(a)** Computed independently (parent has its own damage, children have theirs, no automatic roll-up)?
+   - **(b)** The weighted average of children's capacities (parent has no independent damage — it's just a container)?
+   - **(c)** Parent has its own damage AND children roll up (parent capacity = own capacity, but children contribute to missions through the parent)?
+   - My recommendation: **(a)** — parent and children each have independent damage. They can all contribute to missions independently. The tree is structural grouping, not a computation roll-up. Simpler to explain, simpler to compute. But again — your call.
+
+3. **Can a dependency connect a parent block to a block outside its subtree?** E.g., can "IT Infrastructure" (a top-level block with children) have a dependency on "Power Grid" (external block)? Or must dependencies only connect leaf blocks?
+   - My recommendation: **Any block can have dependencies** — the expert may want to say "the whole IT department depends on the external power grid" without specifying which individual servers. The propagation math works the same either way.
+
+4. **Problem ranking method:** How to rank/prioritize which problems (vulnerable blocks/dependencies) to address first — beyond the raw sensitivity score. To be discussed (you said you're ready).
+
+5. **Frontend tech for the tree:** The hierarchical tree builder is the centerpiece of the GUI. Options:
+   - **(a)** MUI Treeview (simple, built into Material-UI, but limited drag-and-drop).
+   - **(b)** react-arborist or react-complex-tree (purpose-built tree components with drag-and-drop, keyboard nav, virtualization for large trees).
+   - **(c)** react-flow with a hierarchical layout (same library as the dependency graph, but used in tree mode — auto-layout nodes as a tree).
+   - My recommendation: **(b)** — react-complex-tree or react-arborist for the tree builder, and react-flow separately for the dependency graph. Two distinct visual paradigms for two distinct relationships (structural tree vs. dependency graph).
+
+6. **Time dimension:** v1 is a single-frame snapshot. Future: add time evolution (recovery curves, T+1h, T+1day, T+1week).
+
+7. **Cross-body contributions:** Currently blocks can only contribute to missions in their own body. Future: allow direct cross-body contribution links.
+
+8. **Multi-tenant:** Schema supports it structurally, but v1 is single-organization.
+
+9. **Advanced propagation models:** v1 uses linear cascade. Future: nonlinear thresholds, time-delayed propagation, Monte Carlo simulation.
+
+10. **Export/import:** CSV, Excel, JSON export of the model and results for offline analysis.
+
+11. **Versioning:** Model version history (snapshots of the org structure over time).
