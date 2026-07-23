@@ -8,7 +8,7 @@ from app import models, schemas
 router = APIRouter()
 
 
-@router.get("/", response_model=list[schemas.MitigationOut])
+@router.get("/", response_model=List[schemas.MitigationOut])
 def list_mitigations(block_id: int = Query(None), db: Session = Depends(get_db)):
     q = db.query(models.Mitigation)
     if block_id is not None:

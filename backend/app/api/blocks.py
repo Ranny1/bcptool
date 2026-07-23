@@ -8,7 +8,7 @@ from app import models, schemas
 router = APIRouter()
 
 
-@router.get("/", response_model=list[schemas.BlockOut])
+@router.get("/", response_model=List[schemas.BlockOut])
 def list_blocks(body_id: int = Query(None), db: Session = Depends(get_db)):
     q = db.query(models.Block)
     if body_id is not None:

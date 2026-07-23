@@ -8,7 +8,7 @@ from app import models, schemas
 router = APIRouter()
 
 
-@router.get("/", response_model=list[schemas.MissionOut])
+@router.get("/", response_model=List[schemas.MissionOut])
 def list_missions(body_id: int = Query(None), include_org: bool = True, db: Session = Depends(get_db)):
     q = db.query(models.Mission)
     if body_id is not None:

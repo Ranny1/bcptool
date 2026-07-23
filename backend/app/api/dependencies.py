@@ -8,7 +8,7 @@ from app import models, schemas
 router = APIRouter()
 
 
-@router.get("/", response_model=list[schemas.DependencyOut])
+@router.get("/", response_model=List[schemas.DependencyOut])
 def list_dependencies(block_id: int = Query(None), db: Session = Depends(get_db)):
     q = db.query(models.Dependency)
     if block_id is not None:

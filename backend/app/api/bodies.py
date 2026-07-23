@@ -1,4 +1,5 @@
 """Body CRUD endpoints."""
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.core.database import get_db
@@ -7,7 +8,7 @@ from app import models, schemas
 router = APIRouter()
 
 
-@router.get("/", response_model=list[schemas.BodyOut])
+@router.get("/", response_model=List[schemas.BodyOut])
 def list_bodies(db: Session = Depends(get_db)):
     return db.query(models.Body).all()
 

@@ -8,7 +8,7 @@ from app import models, schemas
 router = APIRouter()
 
 
-@router.get("/", response_model=list[schemas.ContributionOut])
+@router.get("/", response_model=List[schemas.ContributionOut])
 def list_contributions(mission_id: int = Query(None), block_id: int = Query(None), db: Session = Depends(get_db)):
     q = db.query(models.Contribution)
     if mission_id is not None:

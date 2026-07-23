@@ -1,4 +1,5 @@
 """Scenario and combined scenario CRUD endpoints."""
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.core.database import get_db
@@ -9,7 +10,7 @@ router_combined = APIRouter()
 
 
 # ── Scenarios ────────────────────────────────────────────────
-@router.get("/", response_model=list[schemas.ScenarioOut])
+@router.get("/", response_model=List[schemas.ScenarioOut])
 def list_scenarios(db: Session = Depends(get_db)):
     return db.query(models.Scenario).all()
 
@@ -54,14 +55,14 @@ def delete_scenario(scenario_id: int, db: Session = Depends(get_db)):
 
 
 # ── Scenario Damage ──────────────────────────────────────────
-@router.get("/{scenario_id}/damages", response_model=list[schemas.ScenarioDamageOut])
+@router.get("/{scenario_id}/damages", response_model=List[schemas.ScenarioDamageOut])
 def list_damages(scenario_id: int, db: Session = Depends(get_db)):
     return db.query(models.ScenarioDamage).filter(
         models.ScenarioDamage.scenario_id == scenario_id
     ).all()
 
 
-@router.put("/{scenario_id}/damages", response_model=list[schemas.ScenarioDamageOut])
+@router.put("/{scenario_id}/damages", response_model=List[schemas.ScenarioDamageOut])
 def bulk_update_damages(scenario_id: int, bulk: schemas.ScenarioDamageBulkUpdate, db: Session = Depends(get_db)):
     # Delete existing damages for this scenario
     db.query(models.ScenarioDamage).filter(
@@ -99,7 +100,7 @@ def delete_damage(scenario_id: int, block_id: int, db: Session = Depends(get_db)
 
 
 # ── Combined Scenarios ───────────────────────────────────────
-@router_combined.get("/", response_model=list[schemas.CombinedScenarioOut])
+@router_combined.get("/", response_model=List[schemas.CombinedScenarioOut])
 def list_combined_scenarios(db: Session = Depends(get_db)):
     combined_list = db.query(models.CombinedScenario).all()
     result = []
