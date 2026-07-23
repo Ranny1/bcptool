@@ -1,0 +1,100 @@
+import { useState } from 'react'
+import { useScenarios, useCompute } from '../api'
+import { Card, CardContent, Typography, Select, MenuItem, Box, Table, TableBody, TableCell, TableHead, TableRow, LinearProgress } from '@mui/material'
+
+const colorForSensitivity = (s: number, max: number) => {
+  const ratio = s / max
+  if (ratio < 0.2) return '#4caf50'  // green
+  if (ratio < 0.5) return '#ff9800'  // yellow
+  return '#f44336'                    // red
+}
+
+export default function Results() {
+  const { data: scenarios } = useScenarios()
+  const [selected, setSelected] = useState<number | null>(null)
+  const { data: result, isLoading } = useCompute(selected)
+
+  const maxSensitivity = result ? Math.max(...result.missions.map(m => m.sensitivity), 1) : 1
+
+  return (
+    <Box>
+      <Box sx={{ mb: 2 }}>
+        <Select
+          value={selected || ''}
+          onChange={(e) => setSelected(e.target.value as number)}
+          displayEmpty
+          sx={{ minWidth: 200 }}
+        >
+          <MenuItem value="" disabled>Select Scenario</MenuItem>
+          {scenarios?.map((s) => (
+            <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
+          ))}
+        </Select>
+      </Box>
+
+      {isLoading && <LinearProgress />}
+
+      {result && (
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          <Card sx={{ flex: 1, minWidth: 400 }}>
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 2 }}>Mission Sensitivity</Typography>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Mission</TableCell>
+                    <TableCell>Importance</TableCell>
+                    <TableCell>Capacity %</TableCell>
+                    <TableCell>Sensitivity</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {result.missions.map((m) => (
+                    <TableRow key={m.mission_id}>
+                      <TableCell>{m.mission_name}</TableCell>
+                      <TableCell>{m.importance}/5</TableCell>
+                      <TableCell>{m.capacity_pct.toFixed(1)}%</TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{
+                            width: 100, height: 20, borderRadius: 1,
+                            bgcolor: colorForSensitivity(m.sensitivity, maxSensitivity)
+                          }} />
+                          {m.sensitivity.toFixed(1)}
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          <Card sx={{ flex: 1, minWidth: 400 }}>
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 2 }}>Block Effective Capacity</Typography>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Block</TableCell>
+                    <TableCell>Direct Damage</TableCell>
+                    <TableCell>Effective Capacity</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {result.blocks.map((b) => (
+                    <TableRow key={b.block_id}>
+                      <TableCell>{b.block_name}</TableCell>
+                      <TableCell>{b.direct_damage_pct.toFixed(1)}%</TableCell>
+                      <TableCell>{b.effective_capacity_pct.toFixed(1)}%</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </Box>
+      )}
+    </Box>
+  )
+}
