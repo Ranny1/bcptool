@@ -521,7 +521,7 @@ This is a separate view/tab from the tree builder. It shows blocks as nodes and 
 
 - Create/edit scenarios.
 - For each scenario: a table or grid of blocks × damage severity (0–100%).
-- **Hierarchical damage assignment:** The expert can assign damage at any level of the block tree. If damage is assigned to a parent block, there should be a clear indication of whether this also applies to children or is only for the parent. (See Open Questions below.)
+- **Hierarchical damage assignment:** The expert can assign damage at any level of the block tree. Damage is always per-block (no automatic cascade to children). The GUI provides an "apply to all descendants" convenience button for quickly damaging a whole subtree, but the model stores each block's damage independently.
 - Quick-fill: "set all to 0" then fill in affected blocks.
 - Copy scenario → modify (e.g., "earthquake moderate" → "earthquake severe").
 - Create combined scenarios: select 2+ existing scenarios → combined damage auto-calculated via residual multiplication.
@@ -668,39 +668,23 @@ The `/api/compute` endpoint:
 | **Mission Sensitivity** | Mission importance × (100% − mission capacity) — the key output metric |
 | **Propagation** | Cascading impact through the dependency graph from directly-damaged blocks to downstream blocks and missions |
 
-## 11. Open Questions (v0.3)
+## 11. Decisions (v0.3)
 
-1. **Hierarchical damage propagation:** When a parent block is damaged, does this automatically damage its children? Options:
-   - **(a) No** — damage is only ever assigned to the specific block the expert selects. The tree is purely structural. If the expert wants to damage a whole subsystem, they assign damage to each leaf, or they use a "apply to all descendants" helper in the GUI.
-   - **(b) Yes, implicitly** — if a parent is at 80% damage, children inherit that 80% as a floor (they can be individually set higher but not lower). The parent's capacity is the weighted average of children.
-   - **(c) Expert's choice per scenario** — a toggle: "damage applies to this block only" vs. "damage cascades to children."
-   - My recommendation: **(a)** with a GUI helper — keeps the computation model clean, and the GUI can offer a "apply to all descendants" button for convenience. But this is your call.
+1. **Hierarchical damage:** **No automatic cascade.** Each block is damaged independently in a scenario. The GUI provides an "apply to all descendants" convenience button, but the computation model treats every block individually. The tree is purely structural grouping.
 
-2. **Block capacity aggregation up the tree:** If a parent block has children, is the parent's effective capacity:
-   - **(a)** Computed independently (parent has its own damage, children have theirs, no automatic roll-up)?
-   - **(b)** The weighted average of children's capacities (parent has no independent damage — it's just a container)?
-   - **(c)** Parent has its own damage AND children roll up (parent capacity = own capacity, but children contribute to missions through the parent)?
-   - My recommendation: **(a)** — parent and children each have independent damage. They can all contribute to missions independently. The tree is structural grouping, not a computation roll-up. Simpler to explain, simpler to compute. But again — your call.
+2. **Capacity roll-up:** **Independent.** Each block has its own damage and its own effective capacity. There is no automatic roll-up from children to parent. Exception: if an explicit upward dependency exists (child depends on parent in the dependency graph), then the parent's capacity is affected through the normal dependency propagation mechanism. In other words: the tree structure alone never causes roll-up; only explicit dependencies do.
 
-3. **Can a dependency connect a parent block to a block outside its subtree?** E.g., can "IT Infrastructure" (a top-level block with children) have a dependency on "Power Grid" (external block)? Or must dependencies only connect leaf blocks?
-   - My recommendation: **Any block can have dependencies** — the expert may want to say "the whole IT department depends on the external power grid" without specifying which individual servers. The propagation math works the same either way.
+3. **Dependencies on non-leaf blocks:** **Yes, any block can have dependencies.** The expert can draw a dependency from a high-level block (e.g., "IT Infrastructure") to any other block (e.g., "Power Grid" external). The propagation math works identically regardless of tree position.
 
-4. **Problem ranking method:** How to rank/prioritize which problems (vulnerable blocks/dependencies) to address first — beyond the raw sensitivity score. To be discussed (you said you're ready).
+4. **Frontend tree component:** **react-complex-tree** for the structural tree builder, **react-flow** for the dependency graph. Two separate views, two purpose-built libraries. Choice prioritizes: drag-and-drop support, keyboard navigation, virtualization for large trees (1000+ nodes), and cross-platform browser compatibility (runs on any laptop with a modern browser, no install beyond the dev server).
 
-5. **Frontend tech for the tree:** The hierarchical tree builder is the centerpiece of the GUI. Options:
-   - **(a)** MUI Treeview (simple, built into Material-UI, but limited drag-and-drop).
-   - **(b)** react-arborist or react-complex-tree (purpose-built tree components with drag-and-drop, keyboard nav, virtualization for large trees).
-   - **(c)** react-flow with a hierarchical layout (same library as the dependency graph, but used in tree mode — auto-layout nodes as a tree).
-   - My recommendation: **(b)** — react-complex-tree or react-arborist for the tree builder, and react-flow separately for the dependency graph. Two distinct visual paradigms for two distinct relationships (structural tree vs. dependency graph).
+5. **Problem ranking method:** Deferred. Will be discussed separately. The spec leaves room for it in the computation model and results view.
 
-6. **Time dimension:** v1 is a single-frame snapshot. Future: add time evolution (recovery curves, T+1h, T+1day, T+1week).
+## 12. Open Items for Future Discussion
 
-7. **Cross-body contributions:** Currently blocks can only contribute to missions in their own body. Future: allow direct cross-body contribution links.
-
-8. **Multi-tenant:** Schema supports it structurally, but v1 is single-organization.
-
-9. **Advanced propagation models:** v1 uses linear cascade. Future: nonlinear thresholds, time-delayed propagation, Monte Carlo simulation.
-
-10. **Export/import:** CSV, Excel, JSON export of the model and results for offline analysis.
-
-11. **Versioning:** Model version history (snapshots of the org structure over time).
+1. **Time dimension:** v1 is a single-frame snapshot. Future: add time evolution (recovery curves, T+1h, T+1day, T+1week).
+2. **Cross-body contributions:** Currently blocks can only contribute to missions in their own body. Future: allow direct cross-body contribution links.
+3. **Multi-tenant:** Schema supports it structurally, but v1 is single-organization.
+4. **Advanced propagation models:** v1 uses linear cascade. Future: nonlinear thresholds, time-delayed propagation, Monte Carlo simulation.
+5. **Export/import:** CSV, Excel, JSON export of the model and results for offline analysis.
+6. **Versioning:** Model version history (snapshots of the org structure over time).
