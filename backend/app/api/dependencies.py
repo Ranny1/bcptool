@@ -1,5 +1,6 @@
 """Dependency CRUD endpoints."""
 from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import List
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app import models, schemas
