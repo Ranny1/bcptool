@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { useScenarios, useBlockTree, useBodies, createScenario, updateScenarioDamages, applyDamageToDescendants } from '../api'
+import { useScenarios, useBlockTree, useBodies, createScenario, updateScenarioDamages, applyDamageToDescendants, type ScenarioOut, type BodyOut, type BlockTreeNode } from '../api'
 import {
   Card, CardContent, Typography, Button, TextField, Dialog, DialogTitle,
   DialogContent, DialogActions, Box, Table, TableBody, TableCell, TableHead,
   TableRow, Slider, Select, MenuItem, FormControl, InputLabel, IconButton,
   Tooltip, Collapse
 } from '@mui/material'
-import { Add as AddIcon, ChevronRight, ChevronDown } from '@mui/icons-material'
+import { Add as AddIcon, ChevronRight, ExpandMore } from '@mui/icons-material'
 
 export default function ScenarioEditor() {
   const { data: scenarios, refetch } = useScenarios()
@@ -19,9 +19,9 @@ export default function ScenarioEditor() {
   const [damages, setDamages] = useState<Record<number, number>>({})
 
   // Flatten tree preserving depth for display
-  const flatBlocks = (nodes: any[], depth = 0): { block: any; depth: number }[] => {
+  const flatBlocks = (nodes: BlockTreeNode[], depth = 0): { block: BlockTreeNode; depth: number }[] => {
     if (!nodes) return []
-    return nodes.reduce((acc: any[], n) => [
+    return nodes.reduce((acc: { block: BlockTreeNode; depth: number }[], n: BlockTreeNode) => [
       ...acc,
       { block: n, depth },
       ...flatBlocks(n.children, depth + 1),
@@ -59,7 +59,7 @@ export default function ScenarioEditor() {
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpen(true)}>
           Add Scenario
         </Button>
-        {scenarios?.map((s) => (
+        {scenarios?.map((s: ScenarioOut) => (
           <Button
             key={s.id}
             variant={selectedScenario === s.id ? 'outlined' : 'text'}
@@ -79,7 +79,7 @@ export default function ScenarioEditor() {
               label="Select Body for Damage Assignment"
               onChange={(e) => setSelectedBody(Number(e.target.value))}
             >
-              {bodies?.map((b) => (
+              {bodies?.map((b: BodyOut) => (
                 <MenuItem key={b.id} value={b.id}>{b.name}</MenuItem>
               ))}
             </Select>

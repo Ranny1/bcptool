@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useBodies, useBlockTree, createBlock, deleteBlock, reparentBlock, createBody } from '../api'
+import { useBodies, useBlockTree, createBlock, deleteBlock, reparentBlock, createBody, type BlockTreeNode } from '../api'
 import {
   Box, Button, TextField, Dialog, DialogTitle, DialogContent, DialogActions,
   Card, CardContent, Typography, IconButton, MenuItem, Select, Tooltip,
@@ -8,7 +8,7 @@ import {
 import {
   Add as AddIcon, Delete as DeleteIcon, Folder as FolderIcon,
   Description as FileIcon, Business as BusinessIcon,
-  ChevronRight, ChevronDown, DragIndicator
+  ChevronRight, ExpandMore, DragIndicator
 } from '@mui/icons-material'
 
 // ── Tree node rendering ─────────────────────────────────────
@@ -39,7 +39,7 @@ function TreeNode({ node, depth, selectedId, onSelect, onAddChild, onDelete }: T
         onClick={() => onSelect(node.id)}
       >
         <IconButton size="small" onClick={(e) => { e.stopPropagation(); setOpen(!open) }}>
-          {hasChildren ? (open ? <ChevronDown fontSize="small" /> : <ChevronRight fontSize="small" />) : null}
+          {hasChildren ? (open ? <ExpandMore fontSize="small" /> : <ChevronRight fontSize="small" />) : null}
         </IconButton>
         {hasChildren ? <FolderIcon fontSize="small" color="action" /> : <FileIcon fontSize="small" color="disabled" />}
         <Typography variant="body2" sx={{ flex: 1, fontWeight: isSelected ? 600 : 400 }}>
@@ -65,7 +65,7 @@ function TreeNode({ node, depth, selectedId, onSelect, onAddChild, onDelete }: T
         </Tooltip>
       </Box>
       <Collapse in={open}>
-        {hasChildren && node.children.map((child) => (
+        {hasChildren && node.children.map((child: BlockTreeNode) => (
           <TreeNode
             key={child.id}
             node={child}
@@ -132,7 +132,7 @@ export default function TreeBuilder() {
   // Find selected block details from flattened tree
   const flatBlocks = (nodes: BlockTreeNode[] | undefined): BlockTreeNode[] => {
     if (!nodes) return []
-    return nodes.reduce((acc: BlockTreeNode[], n) => [...acc, n, ...flatBlocks(n.children)], [])
+    return nodes.reduce((acc: BlockTreeNode[], n: BlockTreeNode) => [...acc, n, ...flatBlocks(n.children)], [])
   }
   const selectedBlockData = flatBlocks(tree).find(b => b.id === selectedBlock)
 
@@ -147,7 +147,7 @@ export default function TreeBuilder() {
               <AddIcon fontSize="small" />
             </IconButton>
           </Box>
-          {bodies?.map((b) => (
+          {bodies?.map((b: { id: number; name: string }) => (
             <Box
               key={b.id}
               sx={{

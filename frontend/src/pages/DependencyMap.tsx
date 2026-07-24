@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import ReactFlow, { Background, Controls, MiniMap, Node, Edge } from 'reactflow'
 import 'reactflow/dist/style.css'
-import { useBlocks, useDependencies, useBodies } from '../api'
+import { useBlocks, useDependencies, useBodies, type BlockOut, type DependencyOut, type BodyOut } from '../api'
 import { Box, Typography, MenuItem, Select, FormControl, InputLabel } from '@mui/material'
 import { useState } from 'react'
 
@@ -14,7 +14,7 @@ export default function DependencyMap() {
   const nodes: Node[] = useMemo(() => {
     if (!blocks) return []
     const n = blocks.length
-    return blocks.map((b, i) => ({
+    return blocks.map((b: BlockOut, i: number) => ({
       id: String(b.id),
       data: { label: b.name },
       position: {
@@ -28,8 +28,8 @@ export default function DependencyMap() {
   const edges: Edge[] = useMemo(() => {
     if (!deps) return []
     return deps
-      .filter(d => !bodyFilter || blocks?.some(b => b.id === d.dependent_block_id || b.id === d.dependency_block_id))
-      .map((d) => ({
+      .filter((d: DependencyOut) => !bodyFilter || blocks?.some((b: BlockOut) => b.id === d.dependent_block_id || b.id === d.dependency_block_id))
+      .map((d: DependencyOut) => ({
         id: String(d.id),
         source: String(d.dependent_block_id),
         target: String(d.dependency_block_id),
@@ -50,7 +50,7 @@ export default function DependencyMap() {
             onChange={(e) => setBodyFilter(e.target.value as string)}
           >
             <MenuItem value="">All Bodies</MenuItem>
-            {bodies?.map((b) => (
+            {bodies?.map((b: BodyOut) => (
               <MenuItem key={b.id} value={String(b.id)}>{b.name}</MenuItem>
             ))}
           </Select>

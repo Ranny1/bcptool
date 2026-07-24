@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useMissions, useBlockTree, useBodies, createMission, createContribution } from '../api'
+import { useMissions, useBlockTree, useBodies, createMission, createContribution, type MissionOut, type BlockTreeNode } from '../api'
 import {
   Card, CardContent, Typography, List, ListItem, ListItemText, Button,
   TextField, Dialog, DialogTitle, DialogContent, DialogActions, Box, Rating,
@@ -19,9 +19,9 @@ export default function MissionMapper() {
   const [importance, setImportance] = useState(3)
 
   // Flatten tree to get all blocks for the selector
-  const flatBlocks = (nodes: any[]): any[] => {
+  const flatBlocks = (nodes: BlockTreeNode[]): BlockTreeNode[] => {
     if (!nodes) return []
-    return nodes.reduce((acc: any[], n) => [...acc, n, ...flatBlocks(n.children)], [])
+    return nodes.reduce((acc: BlockTreeNode[], n: BlockTreeNode) => [...acc, n, ...flatBlocks(n.children)], [])
   }
   const allBlocks = flatBlocks(tree || [])
 
@@ -43,7 +43,7 @@ export default function MissionMapper() {
             label="Select Body"
             onChange={(e) => setSelectedBody(Number(e.target.value))}
           >
-            {bodies?.map((b) => (
+            {bodies?.map((b: { id: number; name: string }) => (
               <MenuItem key={b.id} value={b.id}>{b.name}</MenuItem>
             ))}
           </Select>
@@ -83,7 +83,7 @@ export default function MissionMapper() {
   )
 }
 
-function MissionCard({ mission, allBlocks, onUpdate }: { mission: any; allBlocks: any[]; onUpdate: () => void }) {
+function MissionCard({ mission, allBlocks, onUpdate }: { mission: MissionOut; allBlocks: BlockTreeNode[]; onUpdate: () => void }) {
   const [showBlocks, setShowBlocks] = useState(false)
   const [selectedBlock, setSelectedBlock] = useState('')
   const [strength, setStrength] = useState(3)
@@ -117,7 +117,7 @@ function MissionCard({ mission, allBlocks, onUpdate }: { mission: any; allBlocks
             <FormControl size="small" sx={{ minWidth: 200 }}>
               <InputLabel>Block</InputLabel>
               <Select value={selectedBlock} label="Block" onChange={(e) => setSelectedBlock(e.target.value)}>
-                {allBlocks.map((b) => (
+                {allBlocks.map((b: BlockTreeNode) => (
                   <MenuItem key={b.id} value={String(b.id)}>{b.name}</MenuItem>
                 ))}
               </Select>
@@ -125,7 +125,7 @@ function MissionCard({ mission, allBlocks, onUpdate }: { mission: any; allBlocks
             <FormControl size="small" sx={{ minWidth: 80 }}>
               <InputLabel>Strength</InputLabel>
               <Select value={String(strength)} label="Strength" onChange={(e) => setStrength(Number(e.target.value))}>
-                {[1, 2, 3, 4, 5].map(s => <MenuItem key={s} value={String(s)}>{s}</MenuItem>)}
+                {[1, 2, 3, 4, 5].map((s: number) => <MenuItem key={s} value={String(s)}>{s}</MenuItem>)}
               </Select>
             </FormControl>
             <Button size="small" variant="outlined" onClick={handleAddBlock}>Add</Button>

@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
 
 const API = axios.create({ baseURL: '/api' })
@@ -63,7 +63,7 @@ export interface ComputeResult {
 
 // ── Body hooks ───────────────────────────────────────────────
 export function useBodies() {
-  return useQuery({ queryKey: ['bodies'], queryFn: () => API.get<BodyOut[]>('/bodies/').then(r => r.data) })
+  return useQuery<BodyOut[]>({ queryKey: ['bodies'], queryFn: async () => (await API.get<BodyOut[]>('/bodies/')).data })
 }
 
 export async function createBody(data: { name: string; organization_id: number; description?: string }) {
@@ -80,17 +80,17 @@ export async function deleteBody(id: number) {
 
 // ── Block hooks ──────────────────────────────────────────────
 export function useBlocks(bodyId?: number) {
-  return useQuery({
+  return useQuery<BlockOut[]>({
     queryKey: ['blocks', bodyId],
-    queryFn: () => API.get<BlockOut[]>('/blocks/', { params: bodyId ? { body_id: bodyId } : {} }).then(r => r.data),
+    queryFn: async () => (await API.get<BlockOut[]>('/blocks/', { params: bodyId ? { body_id: bodyId } : {} })).data,
   })
 }
 
 export function useBlockTree(bodyId: number | null) {
-  return useQuery({
+  return useQuery<BlockTreeNode[]>({
     enabled: bodyId !== null,
     queryKey: ['block-tree', bodyId],
-    queryFn: () => API.get<BlockTreeNode[]>(`/blocks/tree/${bodyId}`).then(r => r.data),
+    queryFn: async () => (await API.get<BlockTreeNode[]>(`/blocks/tree/${bodyId}`)).data,
   })
 }
 
@@ -129,9 +129,9 @@ export async function applyDamageToDescendants(blockId: number, scenarioId: numb
 
 // ── Mission hooks ────────────────────────────────────────────
 export function useMissions(bodyId?: number) {
-  return useQuery({
+  return useQuery<MissionOut[]>({
     queryKey: ['missions', bodyId],
-    queryFn: () => API.get<MissionOut[]>('/missions/', { params: bodyId ? { body_id: bodyId } : {} }).then(r => r.data),
+    queryFn: async () => (await API.get<MissionOut[]>('/missions/', { params: bodyId ? { body_id: bodyId } : {} })).data,
   })
 }
 
@@ -149,9 +149,9 @@ export async function deleteMission(id: number) {
 
 // ── Dependency hooks ─────────────────────────────────────────
 export function useDependencies(blockId?: number) {
-  return useQuery({
+  return useQuery<DependencyOut[]>({
     queryKey: ['dependencies', blockId],
-    queryFn: () => API.get<DependencyOut[]>('/dependencies/', { params: blockId ? { block_id: blockId } : {} }).then(r => r.data),
+    queryFn: async () => (await API.get<DependencyOut[]>('/dependencies/', { params: blockId ? { block_id: blockId } : {} })).data,
   })
 }
 
@@ -174,11 +174,11 @@ export async function deleteContribution(id: number) {
 
 // ── Scenario hooks ───────────────────────────────────────────
 export function useScenarios() {
-  return useQuery({ queryKey: ['scenarios'], queryFn: () => API.get<ScenarioOut[]>('/scenarios/').then(r => r.data) })
+  return useQuery<ScenarioOut[]>({ queryKey: ['scenarios'], queryFn: async () => (await API.get<ScenarioOut[]>('/scenarios/')).data })
 }
 
 export async function createScenario(data: { name: string; description?: string }) {
-  return API.post('/scenarios/', data)
+  return API.post<ScenarioOut>('/scenarios/', data)
 }
 
 export async function updateScenarioDamages(scenarioId: number, damages: { block_id: number; damage_pct: number }[]) {
@@ -187,10 +187,10 @@ export async function updateScenarioDamages(scenarioId: number, damages: { block
 
 // ── Compute hooks ────────────────────────────────────────────
 export function useCompute(scenarioId: number | null) {
-  return useQuery({
+  return useQuery<ComputeResult>({
     enabled: scenarioId !== null,
     queryKey: ['compute', scenarioId],
-    queryFn: () => API.post<ComputeResult>('/compute/', { scenario_id: scenarioId, mitigations_enabled: false }).then(r => r.data),
+    queryFn: async () => (await API.post<ComputeResult>('/compute/', { scenario_id: scenarioId, mitigations_enabled: false })).data,
   })
 }
 

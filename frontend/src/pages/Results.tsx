@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useScenarios, useCompute, useBodies, useBlockTree } from '../api'
+import { useScenarios, useCompute, useBodies, useBlockTree, type ScenarioOut, type BlockTreeNode } from '../api'
 import {
   Card, CardContent, Typography, Select, MenuItem, Box, Table,
   TableBody, TableCell, TableHead, TableRow, LinearProgress, FormControl, InputLabel
@@ -21,9 +21,9 @@ export default function Results() {
   const { data: tree } = useBlockTree(selectedBody)
 
   // Flatten tree for block name lookup
-  const flatBlocks = (nodes: any[]): any[] => {
+  const flatBlocks = (nodes: BlockTreeNode[]): BlockTreeNode[] => {
     if (!nodes) return []
-    return nodes.reduce((acc: any[], n) => [...acc, n, ...flatBlocks(n.children)], [])
+    return nodes.reduce((acc: BlockTreeNode[], n: BlockTreeNode) => [...acc, n, ...flatBlocks(n.children)], [])
   }
   const allBlocks = flatBlocks(tree || [])
   const maxSensitivity = result ? Math.max(...result.missions.map(m => m.sensitivity), 1) : 1
@@ -39,7 +39,7 @@ export default function Results() {
             onChange={(e) => setSelected(e.target.value as number)}
           >
             <MenuItem value="" disabled>Select Scenario</MenuItem>
-            {scenarios?.map((s) => (
+            {scenarios?.map((s: ScenarioOut) => (
               <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
             ))}
           </Select>
@@ -52,7 +52,7 @@ export default function Results() {
             onChange={(e) => setSelectedBody(Number(e.target.value))}
           >
             <MenuItem value="">All Bodies</MenuItem>
-            {bodies?.map((b) => (
+            {bodies?.map((b: { id: number; name: string }) => (
               <MenuItem key={b.id} value={b.id}>{b.name}</MenuItem>
             ))}
           </Select>
@@ -76,7 +76,7 @@ export default function Results() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {result.missions.map((m) => (
+                  {result.missions.map((m: { mission_id: number; mission_name: string; importance: number; capacity_pct: number; sensitivity: number }) => (
                     <TableRow key={m.mission_id}>
                       <TableCell>{m.mission_name}</TableCell>
                       <TableCell>{m.importance}/5</TableCell>
@@ -109,7 +109,7 @@ export default function Results() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {result.blocks.map((b) => (
+                  {result.blocks.map((b: { block_id: number; block_name: string; direct_damage_pct: number; effective_capacity_pct: number }) => (
                     <TableRow key={b.block_id}>
                       <TableCell>{b.block_name}</TableCell>
                       <TableCell>{b.direct_damage_pct.toFixed(1)}%</TableCell>
