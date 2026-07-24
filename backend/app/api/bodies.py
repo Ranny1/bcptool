@@ -47,6 +47,36 @@ def delete_body(body_id: int, db: Session = Depends(get_db)):
     db_body = db.query(models.Body).get(body_id)
     if not db_body:
         raise HTTPException(status_code=404, detail="Body not found")
+
+    # Collect all block IDs for this body
+    block_ids = [b.id for b in db.query(models.Block).filter(models.Block.body_id == body_id).all()]
+
+    if block_ids:
+        # Delete dependencies referencing these blocks
+        db.query(models.Dependency).filter(
+            models.Dependency.dependent_block_id.in_(block_ids)
+        ).delete(synchronize_session=False)
+        db.query(models.Dependency).filter(
+            models.Dependency.dependency_block_id.in_(block_ids)
+        ).delete(synchronize_session=False)
+        # Delete contributions referencing these blocks
+        db.query(models.Contribution).filter(
+            models.Contribution.block_id.in_(block_ids)
+        ).delete(synchronize_session=False)
+        # Delete scenario damages referencing these blocks
+        db.query(models.ScenarioDamage).filter(
+            models.ScenarioDamage.block_id.in_(block_ids)
+        ).delete(synchronize_session=False)
+        # Delete mitigations targeting these blocks
+        db.query(models.Mitigation).filter(
+            models.Mitigation.target_block_id.in_(block_ids)
+        ).delete(synchronize_session=False)
+        # Delete the blocks themselves
+        db.query(models.Block).filter(models.Block.body_id == body_id).delete(synchronize_session=False)
+
+    # Delete missions owned by this body
+    db.query(models.Mission).filter(models.Mission.body_id == body_id).delete(synchronize_session=False)
+
     db.delete(db_body)
     db.commit()
     return {"ok": True}

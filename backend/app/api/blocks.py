@@ -119,6 +119,26 @@ def delete_block(block_id: int, db: Session = Depends(get_db)):
         ).all()
         stack.extend(children)
 
+    # Explicitly delete all FK references before deleting blocks
+    # (SQLAlchemy nullifies FKs by default, which hits NOT NULL constraints)
+    block_ids = [b.id for b in to_delete]
+    db.query(models.Dependency).filter(
+        models.Dependency.dependent_block_id.in_(block_ids)
+    ).delete(synchronize_session=False)
+    db.query(models.Dependency).filter(
+        models.Dependency.dependency_block_id.in_(block_ids)
+    ).delete(synchronize_session=False)
+    db.query(models.Contribution).filter(
+        models.Contribution.block_id.in_(block_ids)
+    ).delete(synchronize_session=False)
+    db.query(models.ScenarioDamage).filter(
+        models.ScenarioDamage.block_id.in_(block_ids)
+    ).delete(synchronize_session=False)
+    db.query(models.Mitigation).filter(
+        models.Mitigation.target_block_id.in_(block_ids)
+    ).delete(synchronize_session=False)
+    db.flush()
+
     count = len(to_delete)
     for b in to_delete:
         db.delete(b)
