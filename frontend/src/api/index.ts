@@ -164,6 +164,25 @@ export async function deleteDependency(id: number) {
 }
 
 // ── Contribution hooks ───────────────────────────────────────
+export interface ContributionOut {
+  id: number
+  block_id: number
+  mission_id: number
+  strength: number
+}
+
+export function useContributions(blockId: number | null) {
+  return useQuery<ContributionOut[]>({
+    enabled: blockId !== null,
+    queryKey: ['contributions', blockId],
+    queryFn: async () => (await API.get<ContributionOut[]>('/contributions/', { params: blockId ? { block_id: blockId } : {} })).data,
+  })
+}
+
+export function useAllMissions() {
+  return useQuery<MissionOut[]>({ queryKey: ['all-missions'], queryFn: async () => (await API.get<MissionOut[]>('/missions/')).data })
+}
+
 export async function createContribution(data: { block_id: number; mission_id: number; strength: number }) {
   return API.post('/contributions/', data)
 }
